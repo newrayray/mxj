@@ -396,6 +396,9 @@ func xmlSeqToMapParser(skey string, a []xml.Attr, p *xml.Decoder, r bool) (map[s
 			}
 		case xml.Comment:
 			if n == nil { // no root 'key'
+				if startFromRoot {
+					continue
+				}
 				n = map[string]interface{}{commentK: string(t.(xml.Comment))}
 				return n, NoRoot
 			}
@@ -403,9 +406,26 @@ func xmlSeqToMapParser(skey string, a []xml.Attr, p *xml.Decoder, r bool) (map[s
 			cm[textK] = string(t.(xml.Comment))
 			cm[seqK] = seq
 			seq++
-			na[commentK] = cm
+			//na[commentK] = cm
+
+			if v, ok := na[commentK]; ok {
+				var a []interface{}
+				switch v.(type) {
+				case []interface{}:
+					a = v.([]interface{})
+				default:
+					a = []interface{}{v}
+				}
+				a = append(a, cm)
+				na[commentK] = a
+			} else {
+				na[commentK] = cm // save it as a singleton
+			}
 		case xml.Directive:
 			if n == nil { // no root 'key'
+				if startFromRoot {
+					continue
+				}
 				n = map[string]interface{}{directiveK: string(t.(xml.Directive))}
 				return n, NoRoot
 			}
@@ -416,6 +436,9 @@ func xmlSeqToMapParser(skey string, a []xml.Attr, p *xml.Decoder, r bool) (map[s
 			na[directiveK] = dm
 		case xml.ProcInst:
 			if n == nil {
+				if startFromRoot {
+					continue
+				}
 				na = map[string]interface{}{targetK: t.(xml.ProcInst).Target, instK: string(t.(xml.ProcInst).Inst)}
 				n = map[string]interface{}{procinstK: na}
 				return n, NoRoot
@@ -737,10 +760,14 @@ func mapToXmlSeqIndent(doIndent bool, sb *strings.Builder, key string, value int
 			case []interface{}:
 				// unwind the array as separate entries
 				for _, vv := range v.([]interface{}) {
-					kv = append(kv, keyval{k, vv})
+					if _, ok := vv.(map[string]interface{}); ok {
+						kv = append(kv, keyval{k, vv})
+					}
 				}
 			default:
-				kv = append(kv, keyval{k, v})
+				if _, ok := v.(map[string]interface{}); ok {
+					kv = append(kv, keyval{k, v})
+				}
 			}
 		}
 
