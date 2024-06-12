@@ -346,6 +346,16 @@ func HandleXMPPStreamTag(b ...bool) {
 	}
 }
 
+var startFromRoot bool
+
+func StartFromRoot(b ...bool) {
+	if len(b) == 0 {
+		startFromRoot = !startFromRoot
+	} else if len(b) == 1 {
+		startFromRoot = b[0]
+	}
+}
+
 // 21jan18 - decode all values as map["#text":value] (issue #56)
 var decodeSimpleValuesAsMap bool
 
